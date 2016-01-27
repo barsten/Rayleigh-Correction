@@ -20,7 +20,7 @@ from snappy import ProductUtils
 from snappy import FlagCoding
 from snappy import jpy
 from readfile import readRayADF
-from read_RayCoeff import read_ray_coeff_matrix
+from read_RayCoeff import ADF
 
 DEMFactory = jpy.get_type('org.esa.snap.dem.dataio.DEMFactory')
 Resampling = jpy.get_type('org.esa.snap.core.dataop.resamp.Resampling')
@@ -28,7 +28,9 @@ GeoPos = jpy.get_type('org.esa.snap.core.datamodel.GeoPos')
 
 AUX_FILE = 'C:\\Users\\carsten\\Dropbox\\Carsten\\Tagesordner\\20150814\\Rayleigh-Correction-Processor\\' \
                'ADF\\MER_ATP_AXVACR20091026_144725_20021224_121445_20200101_000000'
-matrix = read_ray_coeff_matrix(AUX_FILE)
+
+adf = ADF(AUX_FILE)
+ray_coeff_matrix = adf.ray_coeff_matrix
 rayADF = readRayADF()
 
 if len(sys.argv) != 2:
@@ -194,10 +196,10 @@ gridGeometry = [gridThetaS, gridThetaV]
 # RayScattCoeffB = rayADF['RayScattCoeffB']
 # RayScattCoeffC = rayADF['RayScattCoeffC']
 # RayScattCoeffD = rayADF['RayScattCoeffD']
-RayScattCoeffA = matrix[:, :, :, 0]
-RayScattCoeffB = matrix[:, :, :, 1]
-RayScattCoeffC = matrix[:, :, :, 2]
-RayScattCoeffD = matrix[:, :, :, 3]
+RayScattCoeffA = ray_coeff_matrix[:, :, :, 0]
+RayScattCoeffB = ray_coeff_matrix[:, :, :, 1]
+RayScattCoeffC = ray_coeff_matrix[:, :, :, 2]
+RayScattCoeffD = ray_coeff_matrix[:, :, :, 3]
 # - Fourier terms
 a = np.zeros(3,dtype=np.float32)
 b = np.zeros(3,dtype=np.float32)
@@ -229,8 +231,8 @@ for i in range(nbands):
     nCO2 = n_ratio*(1+n_1_300) # reflective index at CO2
     sigma[i] = (24*math.pi**3*(nCO2**2-1)**2)/(lam2**4*Ns**2*(nCO2**2+2)**2)*F_air
 
-# for y in range(height):
-for y in range(120,129):
+for y in range(height):
+# for y in range(120,129):
     print("processing line ", y, " of ", height)
     # start radiance to reflectance conversion
     theta_s = tp_theta_s.readPixels(0, y, width, 1, theta_s)  # sun zenith angle in degree
