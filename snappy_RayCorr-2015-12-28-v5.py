@@ -233,11 +233,12 @@ for i in range(nbands):
 for y in range(120,129):
     print("processing line ", y, " of ", height)
     # start radiance to reflectance conversion
+    theta_s = tp_theta_s.readPixels(0, y, width, 1, theta_s)  # sun zenith angle in degree
     for i in range(nbands):
         b_source = product.getBand("radiance_"+str(i+1))
         radiance = b_source.readPixels(0, y, width, 1, radiance)
         E0 = b_source.getSolarFlux()
-        reflectance[i] = radiance * math.pi / E0
+        reflectance[i] = radiance * math.pi / (E0 * np.cos(np.radians(theta_s)))
         b_out = raycorProduct.getBand("rtoa_"+str(i+1))
         b_out.writePixels(0, y, width, 1, reflectance[i])
     # radiance to reflectance conversion completed
@@ -302,10 +303,10 @@ for y in range(120,129):
         azidiff[x] = math.acos(cosdeltaphi) # azimuth difference in radian
         # Fourier components of multiple scattering
         for j in [0, 1, 2]:
-            a[j] = interpn(gridGeometry, RayScattCoeffA[j, :,:], [theta_v[x], theta_s[x]], method='linear', bounds_error=False, fill_value=None)
-            b[j] = interpn(gridGeometry, RayScattCoeffB[j, :,:], [theta_v[x], theta_s[x]], method='linear', bounds_error=False, fill_value=None)
-            c[j] = interpn(gridGeometry, RayScattCoeffC[j, :,:], [theta_v[x], theta_s[x]], method='linear', bounds_error=False, fill_value=None)
-            d[j] = interpn(gridGeometry, RayScattCoeffD[j, :,:], [theta_v[x], theta_s[x]], method='linear', bounds_error=False, fill_value=None)
+            a[j] = interpn(gridGeometry, RayScattCoeffA[j, :,:], [theta_s[x], theta_v[x]], method='linear', bounds_error=False, fill_value=None)
+            b[j] = interpn(gridGeometry, RayScattCoeffB[j, :,:], [theta_s[x], theta_v[x]], method='linear', bounds_error=False, fill_value=None)
+            c[j] = interpn(gridGeometry, RayScattCoeffC[j, :,:], [theta_s[x], theta_v[x]], method='linear', bounds_error=False, fill_value=None)
+            d[j] = interpn(gridGeometry, RayScattCoeffD[j, :,:], [theta_s[x], theta_v[x]], method='linear', bounds_error=False, fill_value=None)
 
         for i in range(nbands):
             # Fourier series, loop
