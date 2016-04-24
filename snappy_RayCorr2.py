@@ -61,7 +61,6 @@ nbands = product.getNumBands()-2 # the last 2 bands are l1flags and detector ind
 # Create TOA reflectance and Rayleig optical thickness bands
 for i in range(nbands):
     bsource = product.getBandAt(i)
-
     btoa_name = "rtoa_"+str(i+1)
     toareflBand = raycorProduct.addBand(btoa_name, ProductData.TYPE_FLOAT32)
     ProductUtils.copySpectralBandProperties(bsource,toareflBand)
@@ -122,7 +121,7 @@ raycorFlagsBand.setSampleCoding(raycorFlagCoding)
 # ProductUtils.copyGeoCoding(product, raycorProduct) #geocoding is copied when tie point grids are copied,
 # i.e. the next copy makes this one redundant (actually it leads to an error beciase lat,lon would be copied twice
 ProductUtils.copyTiePointGrids(product, raycorProduct)
-raycorProduct.writeHeader('raycor_output_5.3sv.dim')
+raycorProduct.writeHeader('E:\\eodata\\MERIS-Rayleigh\\Antarctica\\subset_0_of_MER_RR__1PRBCM20051201_044737_000003972043_00033_19626_0034_RAYC_1.dim')
 
 # Calculate and write toa reflectances and Rayleigh optical thickness
 # ===================================================================
@@ -294,7 +293,7 @@ for y in range(height):
         tv = math.radians(theta_v[x])  # view zenith angle in radian
         ctv = math.cos(tv)  # cosine of view zenith angle
         stv = math.sin(tv)  # sinus of view zenith angle
-        airmass[x] = 1/ctv + 1/ctv  # air mass
+        airmass[x] = 1/cts + 1/ctv  # air mass
         # Rayleigh Phase function, 3 Fourier terms
         PR[0] =  3. * PA / 4.  * ( 1. + cts**2 * ctv**2 + (sts**2 * stv**2)/2.)+PB
         PR[1] = -3. * PA / 8.  * cts * ctv * sts * stv
@@ -306,10 +305,10 @@ for y in range(height):
         azidiff[x] = math.acos(cosdeltaphi) # azimuth difference in radian
         # Fourier components of multiple scattering
         for j in [0, 1, 2]:
-            a[j] = interpn(gridGeometry, RayScattCoeffA[j, :, :], [theta_s[x], theta_v[x]], method='linear', bounds_error=False, fill_value=None)
-            b[j] = interpn(gridGeometry, RayScattCoeffB[j, :, :], [theta_s[x], theta_v[x]], method='linear', bounds_error=False, fill_value=None)
-            c[j] = interpn(gridGeometry, RayScattCoeffC[j, :, :], [theta_s[x], theta_v[x]], method='linear', bounds_error=False, fill_value=None)
-            d[j] = interpn(gridGeometry, RayScattCoeffD[j, :, :], [theta_s[x], theta_v[x]], method='linear', bounds_error=False, fill_value=None)
+            a[j] = interpn(gridGeometry, RayScattCoeffA[j, :,:], [theta_s[x], theta_v[x]], method='linear', bounds_error=False, fill_value=None)
+            b[j] = interpn(gridGeometry, RayScattCoeffB[j, :,:], [theta_s[x], theta_v[x]], method='linear', bounds_error=False, fill_value=None)
+            c[j] = interpn(gridGeometry, RayScattCoeffC[j, :,:], [theta_s[x], theta_v[x]], method='linear', bounds_error=False, fill_value=None)
+            d[j] = interpn(gridGeometry, RayScattCoeffD[j, :,:], [theta_s[x], theta_v[x]], method='linear', bounds_error=False, fill_value=None)
 
         for i in range(nbands):
             # Fourier series, loop
@@ -317,7 +316,7 @@ for y in range(height):
                 # Rayleigh primary scattering
                 rho_Rf[j] = (PR[j]/(4.0 * (cts + ctv))) * (1. - math.exp(-airmass[x]*taur[(i,x)]))
                 # correction for multiple scattering
-                rayMultiCorr[j] = a[j] + b[j] * taur[(i, x)] + c[j] * taur[(i, x)]**2 + d[j] * taur[(i, x)]**3
+                rayMultiCorr[j] = a[j] + b[j] * taur[(i,x)] + c[j] * taur[(i,x)]**2 + d[j] * taur[(i,x)]**3
                 rho_Rm[(j, i, x)]  = rho_Rf[j] * rayMultiCorr[j]
             # rho_Rm[(0, i, x)]  = rho_Rf[0]
             # rho_Rm[(1, i, x)]  = 0.

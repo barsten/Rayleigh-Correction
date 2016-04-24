@@ -6,7 +6,7 @@ import math
 def readRayADF():
 
     rayADF = {}
-    with open('C:\\Users\\carsten\\Dropbox\\Carsten\\Tagesordner\\20150814\\Rayleigh-Correction-Processor\\ADF\\MER_ATP_AXVACR20091026_144725_20021224_121445_20200101_000000','rb') as f:
+    with open('C:\\Users\\carsten\\Dropbox\\Carsten\\Tagesordner\\20160104\\Rayleigh-Correction-Processor\\ADF\\MER_ATP_AXVACR20091026_144725_20021224_121445_20200101_000000','rb') as f:
         # skip MPH  = 1247 bytes
         f.read(1247)
         # skip SPH = 2898 bytes
