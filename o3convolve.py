@@ -8,7 +8,15 @@ class O3:
         self.coeffhighres = _read_O3_coeff(file_path)
 
     def convolve(self, lower, upper):
-        return 123.4
+        O3absorption = self.coeffhighres[:,1]
+        O3wavelength = self.coeffhighres[:,0]
+        numval = O3wavelength.__len__()
+        weight = np.zeros(numval)
+        for i in range(numval):
+            if (O3wavelength[i]>= lower and O3wavelength[i]<= upper):
+                weight[i]=1
+        O3value = np.average(O3absorption, weights=weight)
+        return O3value
 
 def _read_O3_coeff(file_path):
     """
@@ -29,9 +37,9 @@ if __name__ == '__main__':
 
     ozone = O3(AUX_FILE)
     m = ozone.coeffhighres
-    print(m)
+    # print(m)
 
-    lower = 412.5 - 5.0
-    upper = 412.5 + 5.0
+    lower = 550 - 5.0
+    upper = 550 + 5.0
     O3b1 = ozone.convolve(lower, upper)
     print(O3b1)
