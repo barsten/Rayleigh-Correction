@@ -108,9 +108,12 @@ for i in range(nbands):
     rho_ng_name = "rtoa_ng_"+str(i+1)
     rho_ngBand = raycorProduct.addBand(rho_ng_name, ProductData.TYPE_FLOAT32)
     ProductUtils.copySpectralBandProperties(bsource,rho_ngBand)
+    # simple Rayleigh optical thickness, for debugging
+    taurS_name = "taurS_"+str(i+1)
+    taurSBand = raycorProduct.addBand(taurS_name, ProductData.TYPE_FLOAT32)
+    ProductUtils.copySpectralBandProperties(bsource,taurSBand)
 
-
-raycorProduct.setAutoGrouping('rtoa:taur:rRay:rRayF1:rRayF2:rRayF3:transSRay:transVRay:sARay:rtoaRay:rBRR:sphericalAlbedoFactor:RayleighSimple:rtoa_ng')
+raycorProduct.setAutoGrouping('rtoa:taur:rRay:rRayF1:rRayF2:rRayF3:transSRay:transVRay:sARay:rtoaRay:rBRR:sphericalAlbedoFactor:RayleighSimple:rtoa_ng:taurS')
 
 airmassBand = raycorProduct.addBand('airmass', ProductData.TYPE_FLOAT32)
 azidiffBand = raycorProduct.addBand('azidiff', ProductData.TYPE_FLOAT32)
@@ -131,7 +134,7 @@ raycorFlagsBand.setSampleCoding(raycorFlagCoding)
 # i.e. the next copy makes this one redundant (actually it leads to an error beciase lat,lon would be copied twice
 ProductUtils.copyTiePointGrids(product, raycorProduct)
 # raycorProduct.writeHeader('E:\\eodata\\MERIS-Rayleigh\\Antarctica\\subset_0_of_MER_RR__1PRBCM20051201_044737_000003972043_00033_19626_0034_RAYC_1.dim')
-raycorProduct.writeHeader('C:\\Users\\carsten\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\subset_0_of_MER_RR__1PTACR20050713_094325_000002592039_00022_17611_0000_RayCor_3.dim')
+raycorProduct.writeHeader('C:\\Users\\carsten\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\subset_0_of_MER_RR__1PTACR20050713_094325_000002592039_00022_17611_0000_RayCor_4.dim')
 
 # Calculate and write toa reflectances and Rayleigh optical thickness
 # ===================================================================
@@ -180,6 +183,7 @@ rRaySimple = np.zeros((nbands,width), dtype=np.float32)  # simple Rayleigh refle
 rho_ng = np.zeros((nbands,width), dtype=np.float32)  # toa reflectance corrected for gaseous absorption (rho_ng = "rho no gas")
 X2 = np.zeros(width, dtype=np.float32)  # temporary variable used for WV correction algorithm for gaseous absorption
 trans709 = np.zeros(width, dtype=np.float32)  # WV transmission at 709nm, used for WV correction algorithm for gaseous absorption
+taurS = np.zeros((nbands,width), dtype=np.float32)  # simple Rayleigh optical thickness, for debugging only
 
 
 tp_alt = product.getTiePointGrid('dem_alt')
@@ -400,10 +404,20 @@ for y in range(120,129):
             rho_BRR[(i,x)] = rho_toaR[(i,x)]*sphericalFactor[(i,x)]  # top of aerosol reflectance, which is equal to bottom of Rayleigh reflectance
 
         # simple Rayleigh correction
-        #cos_scat_ang2 = cts**2 * ctv**2 + (sts**2 * stv**2)/2.
-        #phase_rayl_min = 0.75 * (1.0 + cos_scat_ang2)
-        #for i in range(nbands):
-        #    rRaySimple[(i,x)] = cts * taur[(i,x)] * phase_rayl_min / (4*3.1415926) * (1/ctv) * 3.1415926
+        azi_diff_deg = math.fabs(azi_v[x] - azi_s[x])
+        if (azi_diff_deg > 180.0):
+            azi_diff_deg = 360.0 - azi_diff_deg
+        azi_diff_rad = math.radians(azi_diff_deg)
+        cos_scat_ang = (-ctv * cts) - (stv * sts * math.cos(azi_diff_rad))
+        phase_rayl_min = 0.75 * (1.0 + cos_scat_ang*cos_scat_ang)
+        for i in range(nbands):
+            b_source = product.getBandAt(i)
+            lam = b_source.getSpectralWavelength()
+            taurS[(i,x)] = math.exp(-4.637) * math.pow((lam/1000.0), -4.0679)
+            pressureAtms = press0[x] * math.exp(-alt[x] / 8000.0)
+            pressureFactor = taurS[(i,x)] / 1013.0
+            taurS[(i,x)] = pressureAtms * pressureFactor
+            rRaySimple[(i,x)] = cts * taurS[(i,x)] * phase_rayl_min / (4*3.1415926) * (1/ctv) * 3.1415926
 
 
     # Write bands to product
@@ -438,7 +452,8 @@ for y in range(120,129):
         rRaySimpleBand.writePixels(0, y, width, 1, rRaySimple[i])
         rho_ngBand = raycorProduct.getBand("rtoa_ng_"+str(i+1))
         rho_ngBand.writePixels(0, y, width, 1, rho_ng[i])
-
+        taurSBand = raycorProduct.getBand("taurS_"+str(i+1))
+        taurSBand.writePixels(0, y, width, 1, taurS[i])
     # Rayleigh calculation completed
 
 raycorProduct.closeIO()
