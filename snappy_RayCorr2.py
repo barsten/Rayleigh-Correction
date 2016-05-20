@@ -100,8 +100,17 @@ for i in range(nbands):
     spf_name = "sphericalAlbedoFactor_"+str(i+1)
     spfBand = raycorProduct.addBand(spf_name, ProductData.TYPE_FLOAT32)
     ProductUtils.copySpectralBandProperties(bsource,spfBand)
+    # simple Rayleigh reflectance (Roland's formular)
+    rRaySimple_name = "RayleighSimple_"+str(i+1)
+    rRaySimpleBand = raycorProduct.addBand(rRaySimple_name, ProductData.TYPE_FLOAT32)
+    ProductUtils.copySpectralBandProperties(bsource,rRaySimpleBand)
+    # gaseous absorption corrected TOA reflectances
+    rho_ng_name = "rtoa_ng_"+str(i+1)
+    rho_ngBand = raycorProduct.addBand(rho_ng_name, ProductData.TYPE_FLOAT32)
+    ProductUtils.copySpectralBandProperties(bsource,rho_ngBand)
 
-raycorProduct.setAutoGrouping('rtoa:taur:rRay:rRayF1:rRayF2:rRayF3:transSRay:transVRay:sARay:rtoaRay:rBRR:sphericalAlbedoFactor')
+
+raycorProduct.setAutoGrouping('rtoa:taur:rRay:rRayF1:rRayF2:rRayF3:transSRay:transVRay:sARay:rtoaRay:rBRR:sphericalAlbedoFactor:RayleighSimple:rtoa_ng')
 
 airmassBand = raycorProduct.addBand('airmass', ProductData.TYPE_FLOAT32)
 azidiffBand = raycorProduct.addBand('azidiff', ProductData.TYPE_FLOAT32)
@@ -121,7 +130,8 @@ raycorFlagsBand.setSampleCoding(raycorFlagCoding)
 # ProductUtils.copyGeoCoding(product, raycorProduct) #geocoding is copied when tie point grids are copied,
 # i.e. the next copy makes this one redundant (actually it leads to an error beciase lat,lon would be copied twice
 ProductUtils.copyTiePointGrids(product, raycorProduct)
-raycorProduct.writeHeader('E:\\eodata\\MERIS-Rayleigh\\Antarctica\\subset_0_of_MER_RR__1PRBCM20051201_044737_000003972043_00033_19626_0034_RAYC_1.dim')
+# raycorProduct.writeHeader('E:\\eodata\\MERIS-Rayleigh\\Antarctica\\subset_0_of_MER_RR__1PRBCM20051201_044737_000003972043_00033_19626_0034_RAYC_1.dim')
+raycorProduct.writeHeader('C:\\Users\\carsten\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\subset_0_of_MER_RR__1PTACR20050713_094325_000002592039_00022_17611_0000_RayCor_3.dim')
 
 # Calculate and write toa reflectances and Rayleigh optical thickness
 # ===================================================================
@@ -146,6 +156,11 @@ m_a = 15.0556 * CO2 + m_a_zero # mean molecular weight of dry air as function of
 PA = 0.9587256      # Rayleigh Phase function, molecular asymetry factor 1
 PB = 1.-PA           # Rayleigh Phase function, molecular asymetry factor 2
 tpoly = rayADF['tR']  # Polynomial coefficients for Rayleigh transmittance
+h2o_cor_poly = np.array([0.3832989, 1.6527957, -1.5635101, 0.5311913]) # Polynomial coefficients for WV transmission @ 709nm
+# absorb_ozon = np.array([0.0, 0.0002174, 0.0034448, 0.0205669, 0.0400134, 0.105446, 0.1081787, 0.0501634, 0.0410249, \
+#                         0.0349671, 0.0187495, 0.0086322, 0.0, 0.0, 0.0, 0.0084989, 0.0018944, 0.0012369, 0.0, 0.0, 0.0000488]) # OLCI
+absorb_ozon = np.array([0.0002174, 0.0034448, 0.0205669, 0.0400134, 0.105446, 0.1081787, 0.0501634,  \
+                        0.0349671, 0.0187495, 0.0086322, 0.0, 0.0084989, 0.0018944, 0.0012369, 0.0]) # MERIS
 
 # arrays which are needed to store some stuff
 radiance = np.zeros(width, dtype=np.float32)
@@ -161,12 +176,20 @@ rho_R = np.zeros((nbands,width), dtype=np.float32)  # first approximation of Ray
 rho_toaR = np.zeros((nbands,width), dtype=np.float32)  # toa reflectance corrected for Rayleigh scattering
 rho_BRR = np.zeros((nbands,width), dtype=np.float32)  # top of aerosol reflectance, which is equal to bottom of Rayleigh reflectance
 sphericalFactor = np.zeros((nbands,width), dtype=np.float32)  # spherical Albedo Correction Factor (for testing only, can be integrated into the equation later)
+rRaySimple = np.zeros((nbands,width), dtype=np.float32)  # simple Rayleigh reflectance formular, after Roland (for testing only)
+rho_ng = np.zeros((nbands,width), dtype=np.float32)  # toa reflectance corrected for gaseous absorption (rho_ng = "rho no gas")
+X2 = np.zeros(width, dtype=np.float32)  # temporary variable used for WV correction algorithm for gaseous absorption
+trans709 = np.zeros(width, dtype=np.float32)  # WV transmission at 709nm, used for WV correction algorithm for gaseous absorption
+
 
 tp_alt = product.getTiePointGrid('dem_alt')
 alt = np.zeros(width, dtype=np.float32)
 
 tp_press = product.getTiePointGrid('atm_press')
 press0 = np.zeros(width, dtype=np.float32)
+
+tp_ozone = product.getTiePointGrid('ozone')
+ozone = np.zeros(width, dtype=np.float32)
 
 tp_latitude = product.getTiePointGrid('latitude')
 lat = np.zeros(width, dtype=np.float32)
@@ -184,6 +207,8 @@ azi_s = np.zeros(width, dtype=np.float32)
 
 tp_azi_v = product.getTiePointGrid('view_azimuth')
 azi_v = np.zeros(width, dtype=np.float32)
+
+
 
 # Rayleigh multiple scattering
 # - Coefficients LUT
@@ -231,8 +256,8 @@ for i in range(nbands):
     nCO2 = n_ratio*(1+n_1_300) # reflective index at CO2
     sigma[i] = (24*math.pi**3*(nCO2**2-1)**2)/(lam2**4*Ns**2*(nCO2**2+2)**2)*F_air
 
-for y in range(height):
-# for y in range(120,129):
+# for y in range(height):
+for y in range(120,129):
     print("processing line ", y, " of ", height)
     # start radiance to reflectance conversion
     theta_s = tp_theta_s.readPixels(0, y, width, 1, theta_s)  # sun zenith angle in degree
@@ -261,11 +286,47 @@ for y in range(height):
     for x in range(width): alt[x] = dem.getElevation(GeoPos(lat[x], lon[x]))
 
     press0 = tp_press.readPixels(0, y, width, 1, press0)
+    ozone = tp_ozone.readPixels(0, y, width, 1, ozone)
 
     theta_s = tp_theta_s.readPixels(0, y, width, 1, theta_s)  # sun zenith angle in degree
     theta_v = tp_theta_v.readPixels(0, y, width, 1, theta_v)   # view zenith angle in degree
     azi_s = tp_azi_s.readPixels(0, y, width, 1, azi_s)  # sun azimuth angle in degree
     azi_v = tp_azi_v.readPixels(0, y, width, 1, azi_v)  # view azimuth angle in degree
+
+    # gaseous absorption correction
+    rho_ng = reflectance # to start: gaseous corrected reflectances equals toa reflectances
+    # water vapour correction:
+    # MERIS band 9 @ 709nm to be corrected; WV absorption 900nm = band 15, WV reference 885nm= band 14
+    b709 = 8 # the band to be corrected
+    bWVRef=13 # the reference reflectance outside WV absorption band
+    bWV=14 # the reflectance within the WV absorption band
+    # OLCI band 11 @ 709nm, WV absorption 900nm = band 19, WV reference 885nm = band 18
+    # b709 = 11 # the band to be corrected
+    # bWVRef=17 # the reference reflectance outside WV absorption band
+    # bWV=18 # the reference reflectance outside WV absorption band
+    for i in range(width):
+        if (reflectance[(bWV,i)]>0):
+            X2[i] = reflectance[(bWV,i)] / reflectance[(bWVRef,i)]
+        else:
+            X2[i] = 1
+    trans709 = h2o_cor_poly[0] + (h2o_cor_poly[1] + (h2o_cor_poly[2] + h2o_cor_poly[3] * X2) * X2) * X2
+    rho_ng[b709] /= trans709
+    # ozone correction
+    model_ozone = 0
+    for x in range(width):
+        ts = math.radians(theta_s[x])  # sun zenith angle in radian
+        cts = math.cos(ts)  # cosine of sun zenith angle
+        sts = math.sin(ts)  # sinus of sun zenith angle
+        tv = math.radians(theta_v[x])  # view zenith angle in radian
+        ctv = math.cos(tv)  # cosine of view zenith angle
+        stv = math.sin(tv)  # sinus of view zenith angle
+        for i in range(nbands):
+            trans_ozoned12 = math.exp(-(absorb_ozon[i] * ozone[x] / 1000.0 - model_ozone) / cts)
+            trans_ozoneu12 = math.exp(-(absorb_ozon[i] * ozone[x] / 1000.0 - model_ozone) / ctv)
+            trans_ozone12 = trans_ozoned12 * trans_ozoneu12
+            rho_ng[(i,x)] /= trans_ozone12
+    # here we can decide if we continue with gaseous corrected reflectances or not
+    reflectance = rho_ng
 
     # Now calculate the pixel dependent terms (like pressure) and finally the Rayleigh optical thickness
     for x in range(width):
@@ -286,6 +347,7 @@ for y in range(height):
         for i in range(nbands):
             taur[(i,x)]=sigma[i] * factor
 
+
         # Calculate Rayleigh Phase function
         ts = math.radians(theta_s[x])  # sun zenith angle in radian
         cts = math.cos(ts)  # cosine of sun zenith angle
@@ -296,7 +358,8 @@ for y in range(height):
         airmass[x] = 1/cts + 1/ctv  # air mass
         # Rayleigh Phase function, 3 Fourier terms
         PR[0] =  3. * PA / 4.  * ( 1. + cts**2 * ctv**2 + (sts**2 * stv**2)/2.)+PB
-        PR[1] = -3. * PA / 8.  * cts * ctv * sts * stv
+#        PR[1] = -3. * PA / 8.  * cts * ctv * sts * stv
+        PR[1] = -3. * PA / 4.  * cts * ctv * sts * stv
         PR[2] =  3. * PA / 16. * sts**2 * stv**2
         # Calculate azimuth difference
         azs = math.radians(azi_s[x])
@@ -336,6 +399,13 @@ for y in range(height):
             sphericalFactor[(i,x)] = 1.0/(1.0+sARay[(i,x)]*rho_toaR[(i,x)]) # factor used in the next equation to account for the spherical albedo
             rho_BRR[(i,x)] = rho_toaR[(i,x)]*sphericalFactor[(i,x)]  # top of aerosol reflectance, which is equal to bottom of Rayleigh reflectance
 
+        # simple Rayleigh correction
+        #cos_scat_ang2 = cts**2 * ctv**2 + (sts**2 * stv**2)/2.
+        #phase_rayl_min = 0.75 * (1.0 + cos_scat_ang2)
+        #for i in range(nbands):
+        #    rRaySimple[(i,x)] = cts * taur[(i,x)] * phase_rayl_min / (4*3.1415926) * (1/ctv) * 3.1415926
+
+
     # Write bands to product
     airmassBand.writePixels(0, y, width, 1, airmass)
     azidiffBand.writePixels(0, y, width, 1, azidiff)
@@ -364,6 +434,10 @@ for y in range(height):
         rBRRBand.writePixels(0, y, width, 1, rho_BRR[i])
         spfBand = raycorProduct.getBand("sphericalAlbedoFactor_"+str(i+1))
         spfBand.writePixels(0, y, width, 1, sphericalFactor[i])
+        rRaySimpleBand = raycorProduct.getBand("RayleighSimple_"+str(i+1))
+        rRaySimpleBand.writePixels(0, y, width, 1, rRaySimple[i])
+        rho_ngBand = raycorProduct.getBand("rtoa_ng_"+str(i+1))
+        rho_ngBand.writePixels(0, y, width, 1, rho_ng[i])
 
     # Rayleigh calculation completed
 
