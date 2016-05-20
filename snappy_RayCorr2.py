@@ -260,8 +260,8 @@ for i in range(nbands):
     nCO2 = n_ratio*(1+n_1_300) # reflective index at CO2
     sigma[i] = (24*math.pi**3*(nCO2**2-1)**2)/(lam2**4*Ns**2*(nCO2**2+2)**2)*F_air
 
-# for y in range(height):
-for y in range(120,129):
+for y in range(height):
+# for y in range(120,129):
     print("processing line ", y, " of ", height)
     # start radiance to reflectance conversion
     theta_s = tp_theta_s.readPixels(0, y, width, 1, theta_s)  # sun zenith angle in degree
