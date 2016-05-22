@@ -1,8 +1,8 @@
 # coding=utf-8
 
 # Rayleigh Correction Processor
-# MERIS only
-# experimental version on the evening of 28.12.2015
+# MERIS; preparation for OLCI in progress
+# experimental version, 20.05.2016
 # creates TOA reflectances
 # calculates Rayleigh Optical Thickness in all bands
 # calculates the Rayleigh reflectances
@@ -21,10 +21,14 @@ from snappy import FlagCoding
 from snappy import jpy
 from readfile import readRayADF
 from read_RayCoeff import ADF
+from o3convolve import O3
 
 DEMFactory = jpy.get_type('org.esa.snap.dem.dataio.DEMFactory')
 Resampling = jpy.get_type('org.esa.snap.core.dataop.resamp.Resampling')
 GeoPos = jpy.get_type('org.esa.snap.core.datamodel.GeoPos')
+
+SENSOR = 'OLCI'
+OUT_FILE = 'C:\\Users\\carsten\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\RayCor_1.dim'
 
 AUX_FILE = 'C:\\Users\\carsten\\Dropbox\\Carsten\\Tagesordner\\20160104\\Rayleigh-Correction-Processor\\' \
                'ADF\\MER_ATP_AXVACR20091026_144725_20021224_121445_20200101_000000'
@@ -47,6 +51,7 @@ name = product.getName()
 description = product.getDescription()
 band_names = product.getBandNames()
 
+print("Sensor:      %s" % SENSOR)
 print("Product:     %s, %s" % (name, description))
 print("Raster size: %d x %d pixels" % (width, height))
 print("Start time:  " + str(product.getStartTime()))
@@ -57,7 +62,10 @@ raycorProduct = Product('RayCorr', 'RayCorr', width, height)
 writer = ProductIO.getProductWriter('BEAM-DIMAP')
 raycorProduct.setProductWriter(writer)
 
-nbands = product.getNumBands()-2 # the last 2 bands are l1flags and detector index; we don't need them
+if (SENSOR == 'MERIS'):
+    nbands = product.getNumBands()-2 # the last 2 bands are l1flags and detector index; we don't need them
+if (SENSOR == 'OLCI'):
+    nbands = 21
 # Create TOA reflectance and Rayleig optical thickness bands
 for i in range(nbands):
     bsource = product.getBandAt(i)
@@ -134,7 +142,7 @@ raycorFlagsBand.setSampleCoding(raycorFlagCoding)
 # i.e. the next copy makes this one redundant (actually it leads to an error beciase lat,lon would be copied twice
 ProductUtils.copyTiePointGrids(product, raycorProduct)
 # raycorProduct.writeHeader('E:\\eodata\\MERIS-Rayleigh\\Antarctica\\subset_0_of_MER_RR__1PRBCM20051201_044737_000003972043_00033_19626_0034_RAYC_1.dim')
-raycorProduct.writeHeader('C:\\Users\\carsten\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\subset_0_of_MER_RR__1PTACR20050713_094325_000002592039_00022_17611_0000_RayCor_4.dim')
+raycorProduct.writeHeader(OUT_FILE)
 
 # Calculate and write toa reflectances and Rayleigh optical thickness
 # ===================================================================
@@ -162,8 +170,11 @@ tpoly = rayADF['tR']  # Polynomial coefficients for Rayleigh transmittance
 h2o_cor_poly = np.array([0.3832989, 1.6527957, -1.5635101, 0.5311913]) # Polynomial coefficients for WV transmission @ 709nm
 # absorb_ozon = np.array([0.0, 0.0002174, 0.0034448, 0.0205669, 0.0400134, 0.105446, 0.1081787, 0.0501634, 0.0410249, \
 #                         0.0349671, 0.0187495, 0.0086322, 0.0, 0.0, 0.0, 0.0084989, 0.0018944, 0.0012369, 0.0, 0.0, 0.0000488]) # OLCI
-absorb_ozon = np.array([0.0002174, 0.0034448, 0.0205669, 0.0400134, 0.105446, 0.1081787, 0.0501634,  \
-                        0.0349671, 0.0187495, 0.0086322, 0.0, 0.0084989, 0.0018944, 0.0012369, 0.0]) # MERIS
+# absorb_ozon = np.array([0.0002174, 0.0034448, 0.0205669, 0.0400134, 0.105446, 0.1081787, 0.0501634,  \
+#                         0.0349671, 0.0187495, 0.0086322, 0.0, 0.0084989, 0.0018944, 0.0012369, 0.0]) # MERIS
+O3_FILE = 'C:\\Users\\carsten\\Dropbox\\Carsten\\Tagesordner\\20160104\\Rayleigh-Correction-Processor\\ozone-highres.txt'
+ozoneO = O3(O3_FILE)
+absorb_ozon = ozoneO.convolveInstrument('MERIS')
 
 # arrays which are needed to store some stuff
 radiance = np.zeros(width, dtype=np.float32)
@@ -185,31 +196,52 @@ X2 = np.zeros(width, dtype=np.float32)  # temporary variable used for WV correct
 trans709 = np.zeros(width, dtype=np.float32)  # WV transmission at 709nm, used for WV correction algorithm for gaseous absorption
 taurS = np.zeros((nbands,width), dtype=np.float32)  # simple Rayleigh optical thickness, for debugging only
 
+if (SENSOR == 'MERIS'):
+    dem_alt = 'dem_alt'
+    atm_press = 'atm_press'
+    ozone = 'ozone'
+    latitude = 'latitude'
+    longitude = 'longitude'
+    sun_zenith = 'sun_zenith'
+    view_zenith = 'view_zenith'
+    sun_azimuth = 'sun_azimuth'
+    view_azimuth = 'view_azimuth'
+if (SENSOR == 'OLCI'):
+    dem_alt = 'N/A'
+    atm_press = 'sea_level_pressure'
+    ozone = 'total_ozone'
+    latitude = 'TP_latitude'
+    longitude = 'TP_longitude'
+    sun_zenith = 'SZA'
+    view_zenith = 'OZA'
+    sun_azimuth = 'SAA'
+    view_azimuth = 'OAA'
 
-tp_alt = product.getTiePointGrid('dem_alt')
-alt = np.zeros(width, dtype=np.float32)
+if (SENSOR == 'MERIS'):
+    tp_alt = product.getTiePointGrid(dem_alt)
+    alt = np.zeros(width, dtype=np.float32)
 
-tp_press = product.getTiePointGrid('atm_press')
+tp_press = product.getTiePointGrid(atm_press)
 press0 = np.zeros(width, dtype=np.float32)
 
-tp_ozone = product.getTiePointGrid('ozone')
+tp_ozone = product.getTiePointGrid(ozone)
 ozone = np.zeros(width, dtype=np.float32)
 
-tp_latitude = product.getTiePointGrid('latitude')
+tp_latitude = product.getTiePointGrid(latitude)
 lat = np.zeros(width, dtype=np.float32)
-tp_longitude = product.getTiePointGrid('longitude')
+tp_longitude = product.getTiePointGrid(longitude)
 lon = np.zeros(width, dtype=np.float32)
 
-tp_theta_s = product.getTiePointGrid('sun_zenith')
+tp_theta_s = product.getTiePointGrid(sun_zenith)
 theta_s = np.zeros(width, dtype=np.float32)
 
-tp_theta_v = product.getTiePointGrid('view_zenith')
+tp_theta_v = product.getTiePointGrid(view_zenith)
 theta_v = np.zeros(width, dtype=np.float32)
 
-tp_azi_s = product.getTiePointGrid('sun_azimuth')
+tp_azi_s = product.getTiePointGrid(sun_azimuth)
 azi_s = np.zeros(width, dtype=np.float32)
 
-tp_azi_v = product.getTiePointGrid('view_azimuth')
+tp_azi_v = product.getTiePointGrid(view_azimuth)
 azi_v = np.zeros(width, dtype=np.float32)
 
 
@@ -221,10 +253,6 @@ dimThetaS = dimThetaV = dimTheta
 gridThetaS = rayADF['theta']
 gridThetaV = rayADF['theta']
 gridGeometry = [gridThetaS, gridThetaV]
-# RayScattCoeffA = rayADF['RayScattCoeffA']
-# RayScattCoeffB = rayADF['RayScattCoeffB']
-# RayScattCoeffC = rayADF['RayScattCoeffC']
-# RayScattCoeffD = rayADF['RayScattCoeffD']
 RayScattCoeffA = ray_coeff_matrix[:, :, :, 0]
 RayScattCoeffB = ray_coeff_matrix[:, :, :, 1]
 RayScattCoeffC = ray_coeff_matrix[:, :, :, 2]
@@ -249,7 +277,7 @@ print("Processing ...")
 for i in range(nbands):
     print("processing Rayleigh cross section of band", i)
     b_source = product.getBandAt(i)
-    lam = b_source.getSpectralWavelength() # wavelength of MERIS band i in nm
+    lam = b_source.getSpectralWavelength() # wavelength of band i in nm
     lam = lam / 1000.0 # wavelength in micrometer
     lam2 = lam / 10000.0 # wavelength in cm
     F_N2 = 1.034+0.000317/(lam**2) # King factor of N2
@@ -260,13 +288,20 @@ for i in range(nbands):
     nCO2 = n_ratio*(1+n_1_300) # reflective index at CO2
     sigma[i] = (24*math.pi**3*(nCO2**2-1)**2)/(lam2**4*Ns**2*(nCO2**2+2)**2)*F_air
 
-for y in range(height):
-# for y in range(120,129):
+# for y in range(height):
+for y in range(120,129):
     print("processing line ", y, " of ", height)
     # start radiance to reflectance conversion
     theta_s = tp_theta_s.readPixels(0, y, width, 1, theta_s)  # sun zenith angle in degree
+    if (SENSOR == 'OLCI'):
+        theta_s = tp_theta_s.readPixels(0, y, width, 1, theta_s)  # sun zenith angle in degree
     for i in range(nbands):
-        b_source = product.getBand("radiance_"+str(i+1))
+        if (SENSOR == 'MERIS'): b_source = product.getBand("radiance_"+str(i+1))
+        if (SENSOR == 'OLCI'):
+            if (i<10):
+                b_source = product.getBand("Oa0"+str(i+1)+"_radiance")
+            else:
+                b_source = product.getBand("Oa_"+str(i+1)+"_radiance")
         radiance = b_source.readPixels(0, y, width, 1, radiance)
         E0 = b_source.getSolarFlux()
         reflectance[i] = radiance * math.pi / (E0 * np.cos(np.radians(theta_s)))
@@ -362,7 +397,6 @@ for y in range(height):
         airmass[x] = 1/cts + 1/ctv  # air mass
         # Rayleigh Phase function, 3 Fourier terms
         PR[0] =  3. * PA / 4.  * ( 1. + cts**2 * ctv**2 + (sts**2 * stv**2)/2.)+PB
-#        PR[1] = -3. * PA / 8.  * cts * ctv * sts * stv
         PR[1] = -3. * PA / 4.  * cts * ctv * sts * stv
         PR[2] =  3. * PA / 16. * sts**2 * stv**2
         # Calculate azimuth difference
