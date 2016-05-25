@@ -55,7 +55,7 @@ def main():
         fp.close()
     # print(obj1)
     # print(obj2)
-    print(cmp(obj1, obj2))
+    # print(cmp(obj1, obj2))
     print('hello world')
 
 if __name__ == '__main__':
