@@ -1,20 +1,19 @@
 import numpy as np
-import struct
+
 
 class O3:
-
     def __init__(self, file_path):
         self.file_path = file_path
         self.coeffhighres = _read_O3_coeff(file_path)
 
     def convolve(self, lower, upper):
-        O3absorption = self.coeffhighres[:,1]
-        O3wavelength = self.coeffhighres[:,0]
+        O3absorption = self.coeffhighres[:, 1]
+        O3wavelength = self.coeffhighres[:, 0]
         numval = O3wavelength.__len__()
         weight = np.zeros(numval)
         for i in range(numval):
-            if (O3wavelength[i]>= lower and O3wavelength[i]<= upper):
-                weight[i]=1
+            if (O3wavelength[i] >= lower and O3wavelength[i] <= upper):
+                weight[i] = 1
         O3value = np.average(O3absorption, weights=weight)
         return O3value
 
@@ -23,19 +22,23 @@ class O3:
         :param instrument: name of sensor, so that the right bands can be chosen
         :return: numpy array with ozone absorption coefficients for each wavelength of instrumenet, in Dobson units
         """
-        o3absorpInstrument=0.0
+        o3absorpInstrument = 0.0
         if (instrument == 'MERIS'):
-            absorb_ozon = np.array([0.0002174, 0.0034448, 0.0205669, 0.0400134, 0.105446, 0.1081787, 0.0501634,  \
-                        0.0349671, 0.0187495, 0.0086322, 0.0000001, 0.0084989, 0.0018944, 0.0012369, 0.000001]) # MERIS
-            lamC = np.array([412.5, 442.0, 490.0, 510.0, 560.0, 620.0, 665.0, 681.25, 708.75, 753.0, 761.25, 779.0, 865.0, 885.0, 900])
+            absorb_ozon = np.array([0.0002174, 0.0034448, 0.0205669, 0.0400134, 0.105446, 0.1081787, 0.0501634,
+                                    0.0349671, 0.0187495, 0.0086322, 0.0000001, 0.0084989, 0.0018944, 0.0012369,
+                                    0.000001])  # MERIS
+            lamC = np.array(
+                    [412.5, 442.0, 490.0, 510.0, 560.0, 620.0, 665.0, 681.25, 708.75, 753.0, 761.25, 779.0, 865.0,
+                     885.0, 900])
             lamW = np.array([10., 10., 10., 10., 10., 10., 10., 10., 10., 10., 3.75, 10., 20., 20., 40.])
             o3absorpInstrument = np.zeros(15, dtype=np.float32)
             for i in range(15):
-                lower=lamC[i]-lamW[i]/2
-                upper=lamC[i]+lamW[i]/2
-                o3absorpInstrument[i] = O3.convolve(self, lower,upper)
+                lower = lamC[i] - lamW[i] / 2
+                upper = lamC[i] + lamW[i] / 2
+                o3absorpInstrument[i] = O3.convolve(self, lower, upper)
                 # print(i, absorb_ozon[i], o3absorpInstrument[i], 100*(absorb_ozon[i]-o3absorpInstrument[i])/absorb_ozon[i])
         return o3absorpInstrument
+
 
 def _read_O3_coeff(file_path):
     """
@@ -44,11 +47,13 @@ def _read_O3_coeff(file_path):
 
     """
 
-    coeff = np.loadtxt(file_path,skiprows=2)
+    coeff = np.loadtxt(file_path, skiprows=2)
     return coeff
 
+
 if __name__ == '__main__':
-    AUX_FILE = 'C:\\Users\\carsten\\Dropbox\\Carsten\\Tagesordner\\20160104\\Rayleigh-Correction-Processor\\ozone-highres.txt'
+    import os.path
+    AUX_FILE = os.path.join(os.path.dirname(__file__), 'ozone-highres.txt')
 
     ozone = O3(AUX_FILE)
     m = ozone.coeffhighres

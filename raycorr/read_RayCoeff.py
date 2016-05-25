@@ -1,8 +1,8 @@
 import numpy as np
 import struct
 
-class ADF:
 
+class ADF:
     def __init__(self, file_path):
         self.file_path = file_path
         self.ray_coeff_matrix = _read_ray_coeff_matrix(file_path)
