@@ -51,8 +51,13 @@ def main(args=sys.argv[1:]):
     Resampling = jpy.get_type('org.esa.snap.core.dataop.resamp.Resampling')
     GeoPos = jpy.get_type('org.esa.snap.core.datamodel.GeoPos')
 
-    SENSOR = 'MERIS'
-    OUT_FILE = 'C:\\Users\\carsten\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\testdata\\Testprodukt_MER_RR_20050713.dim'
+    # SENSOR = 'MERIS'
+    # OUT_FILE = 'C:\\Users\\carsten\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\testdata\\Testprodukt_MER_RR_20050713.dim'
+
+    SENSOR = 'OLCI'
+    IN_FILE = 'C:\\Users\\carsten\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\testdata\\subset_0_of_S3A_OL_1_EFR____20160509T103945_20160509T104245_20160509T124907_0180_004_051_1979_SVL_O_NR_001.dim'
+    file = IN_FILE
+    OUT_FILE = 'C:\\Users\\carsten\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\testdata\\Testproduct_S3A_OL_1_EFR____20160509T103945.dim'
 
     AUX_FILE = 'C:\\Users\\carsten\\Dropbox\\Carsten\\Tagesordner\\20160104\\Rayleigh-Correction-Processor\\' \
                'ADF\\MER_ATP_AXVACR20091026_144725_20021224_121445_20200101_000000'
@@ -68,12 +73,14 @@ def main(args=sys.argv[1:]):
     new_aux['ray_coeff_matrix'] = ray_coeff_matrix
     # with open('raycorr_auxdata.json', 'w') as fp:
     #         json.dumps(new_aux, fp, cls=JSONNumpyEncoder, indent=2)
-    # obj = json.loads(fp, object_hook=json_as_numpy)
+    # fp.close()
+    # with open('raycorr_auxdata.json', 'w') as fp:
+    #     obj = json.loads(fp, object_hook=json_as_numpy)
     json_str = json.dumps(new_aux, cls=JSONNumpyEncoder, indent=2)
     print(json_str)
     obj = json.loads(json_str, object_hook=json_as_numpy)
-
-    rayADF = new_aux
+    # rayADF = new_aux
+    rayADF = obj
 
     print("Reading...")
     product = ProductIO.readProduct(file)
@@ -96,11 +103,25 @@ def main(args=sys.argv[1:]):
 
     if (SENSOR == 'MERIS'):
         nbands = product.getNumBands() - 2  # the last 2 bands are l1flags and detector index; we don't need them
+        band_name = ["radiance_1"]
+        for i in range(1,nbands):
+            band_name += ["radiance_" + str(i+1)]
     if (SENSOR == 'OLCI'):
         nbands = 21
+        band_name = ["Oa01_radiance"]
+        sf_name = ["solar_flux_band_1"]
+        for i in range(1,nbands):
+            if (i < 9):
+                band_name += ["Oa0" + str(i + 1) + "_radiance"]
+                sf_name += ["solar_flux_band_" + str(i + 1)]
+            else:
+                band_name += ["Oa" + str(i + 1) + "_radiance"]
+                sf_name += ["solar_flux_band_" + str(i + 1)]
+
     # Create TOA reflectance and Rayleig optical thickness bands
     for i in range(nbands):
-        bsource = product.getBandAt(i)
+        # bsource = product.getBandAt(i)
+        bsource = product.getBand(band_name[i])
         btoa_name = "rtoa_" + str(i + 1)
         toareflBand = raycorProduct.addBand(btoa_name, ProductData.TYPE_FLOAT32)
         ProductUtils.copySpectralBandProperties(bsource, toareflBand)
@@ -206,11 +227,12 @@ def main(args=sys.argv[1:]):
     #                         0.0349671, 0.0187495, 0.0086322, 0.0, 0.0, 0.0, 0.0084989, 0.0018944, 0.0012369, 0.0, 0.0, 0.0000488]) # OLCI
     # absorb_ozon = np.array([0.0002174, 0.0034448, 0.0205669, 0.0400134, 0.105446, 0.1081787, 0.0501634,  \
     #                         0.0349671, 0.0187495, 0.0086322, 0.0, 0.0084989, 0.0018944, 0.0012369, 0.0]) # MERIS
-    O3_FILE = 'C:\\Users\\carsten\\Dropbox\\Carsten\\Tagesordner\\20160104\\Rayleigh-Correction-Processor\\ozone-highres.txt'
+    O3_FILE = 'C:\\Users\\carsten\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\raycorr\\ozone-highres.txt'
     ozoneO = O3(O3_FILE)
-    absorb_ozon = ozoneO.convolveInstrument('MERIS')
+    absorb_ozon = ozoneO.convolveInstrument(SENSOR)
 
     # arrays which are needed to store some stuff
+    E0 = np.zeros(width, dtype=np.float32)
     radiance = np.zeros(width, dtype=np.float32)
     reflectance = np.zeros((nbands, width), dtype=np.float32)
     taur = np.zeros((nbands, width), dtype=np.float32)
@@ -257,9 +279,9 @@ def main(args=sys.argv[1:]):
         sun_azimuth = 'SAA'
         view_azimuth = 'OAA'
 
-    if (SENSOR == 'MERIS'):
+    if (SENSOR == 'MERIS'): # check if this is required at all!
         tp_alt = product.getTiePointGrid(dem_alt)
-        alt = np.zeros(width, dtype=np.float32)
+    alt = np.zeros(width, dtype=np.float32)
 
     tp_press = product.getTiePointGrid(atm_press)
     press0 = np.zeros(width, dtype=np.float32)
@@ -314,7 +336,8 @@ def main(args=sys.argv[1:]):
     # Calculate the Rayleigh cross section, which depends only on wavelength but not on air pressure
     for i in range(nbands):
         print("processing Rayleigh cross section of band", i)
-        b_source = product.getBandAt(i)
+#        b_source = product.getBandAt(i)
+        b_source = product.getBand(band_name[i])
         lam = b_source.getSpectralWavelength()  # wavelength of band i in nm
         lam = lam / 1000.0  # wavelength in micrometer
         lam2 = lam / 10000.0  # wavelength in cm
@@ -327,22 +350,20 @@ def main(args=sys.argv[1:]):
         nCO2 = n_ratio * (1 + n_1_300)  # reflective index at CO2
         sigma[i] = (24 * math.pi ** 3 * (nCO2 ** 2 - 1) ** 2) / (lam2 ** 4 * Ns ** 2 * (nCO2 ** 2 + 2) ** 2) * F_air
 
-    # for y in range(height):
-    for y in range(120, 129):
+    for y in range(height):
+    # for y in range(120, 129):
+    # for y in range(10, 30):
         print("processing line ", y, " of ", height)
         # start radiance to reflectance conversion
         theta_s = tp_theta_s.readPixels(0, y, width, 1, theta_s)  # sun zenith angle in degree
-        if (SENSOR == 'OLCI'):
-            theta_s = tp_theta_s.readPixels(0, y, width, 1, theta_s)  # sun zenith angle in degree
         for i in range(nbands):
-            if (SENSOR == 'MERIS'): b_source = product.getBand("radiance_" + str(i + 1))
-            if (SENSOR == 'OLCI'):
-                if (i < 10):
-                    b_source = product.getBand("Oa0" + str(i + 1) + "_radiance")
-                else:
-                    b_source = product.getBand("Oa_" + str(i + 1) + "_radiance")
+            b_source = product.getBand(band_name[i])
             radiance = b_source.readPixels(0, y, width, 1, radiance)
-            E0 = b_source.getSolarFlux()
+            if (SENSOR == 'MERIS'):
+                E0.fill(b_source.getSolarFlux())
+            if (SENSOR == 'OLCI'):
+                    b_source = product.getBand(sf_name[i])
+                    E0 = b_source.readPixels(0, y, width, 1, E0)
             reflectance[i] = radiance * math.pi / (E0 * np.cos(np.radians(theta_s)))
             b_out = raycorProduct.getBand("rtoa_" + str(i + 1))
             b_out.writePixels(0, y, width, 1, reflectance[i])
@@ -355,6 +376,8 @@ def main(args=sys.argv[1:]):
         raycorFlagsBand.writePixels(0, y, width, 1, raycorFlags)
         # end flags dummy code
 
+    # raycorProduct.closeIO()
+    # if (0==1):
         lat = tp_latitude.readPixels(0, y, width, 1, lat)
         lon = tp_longitude.readPixels(0, y, width, 1, lon)
 
@@ -420,9 +443,8 @@ def main(args=sys.argv[1:]):
             cos2phi = math.cos(2 * dphi)
             g0 = g0_45 * (1 - 0.0026373 * cos2phi + 0.0000059 * cos2phi ** 2)
             zs = 0.73737 * z + 5517.56  # effective mass-weighted altitude
-            g = g0 - (0.0003085462 + 0.000000227 * cos2phi) * zs + (
-                                                                       0.00000000007254 + 0.0000000000001 * cos2phi) * zs ** 2 - (
-                                                                                                                                     1.517E-17 + 6E-20 * cos2phi) * zs ** 3
+            g = g0 - (0.0003085462 + 0.000000227 * cos2phi) * zs + (0.00000000007254 + 0.0000000000001 * cos2phi) * \
+                                                                   zs ** 2 - (1.517E-17 + 6E-20 * cos2phi) * zs ** 3
             # calculations to get the Rayeigh optical thickness
             factor = (P * AVO) / (m_a * g)
             for i in range(nbands):
@@ -496,7 +518,8 @@ def main(args=sys.argv[1:]):
             cos_scat_ang = (-ctv * cts) - (stv * sts * math.cos(azi_diff_rad))
             phase_rayl_min = 0.75 * (1.0 + cos_scat_ang * cos_scat_ang)
             for i in range(nbands):
-                b_source = product.getBandAt(i)
+                # b_source = product.getBandAt(i)
+                b_source = product.getBand(band_name[i])
                 lam = b_source.getSpectralWavelength()
                 taurS[(i, x)] = math.exp(-4.637) * math.pow((lam / 1000.0), -4.0679)
                 pressureAtms = press0[x] * math.exp(-alt[x] / 8000.0)

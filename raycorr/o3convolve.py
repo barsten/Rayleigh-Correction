@@ -37,6 +37,18 @@ class O3:
                 upper = lamC[i] + lamW[i] / 2
                 o3absorpInstrument[i] = O3.convolve(self, lower, upper)
                 # print(i, absorb_ozon[i], o3absorpInstrument[i], 100*(absorb_ozon[i]-o3absorpInstrument[i])/absorb_ozon[i])
+
+        if (instrument == 'OLCI'):
+            lamC = np.array(
+                    [400.0, 412.5, 442.0, 490.0, 510.0, 560.0, 620.0, 665.0, 673.75, 681.25, 708.75, 753.75, 761.25, 764.375, 767.5, 778.75, 865.0,
+                     885.0, 900.0, 940.0, 1020.0])
+            lamW = np.array([15., 10., 10., 10., 10., 10., 10., 10., 7.5, 7.5, 10., 7.5, 2.5, 3.75, 2.5, 15., 20., 10., 10., 20., 40.])
+            o3absorpInstrument = np.zeros(21, dtype=np.float32)
+            for i in range(21):
+                lower = lamC[i] - lamW[i] / 2
+                upper = lamC[i] + lamW[i] / 2
+                o3absorpInstrument[i] = O3.convolve(self, lower, upper)
+
         return o3absorpInstrument
 
 
