@@ -42,22 +42,30 @@ def json_as_numpy(dct):
 
 def main(args=sys.argv[1:]):
     if len(args) != 1:
-        print("usage: raycorr-processor <file>")
+        print("usage: raycorr-processor <SENSOR>")
         sys.exit(1)
 
-    file = args[0]
+    SENSOR = args[0]
+    # SENSOR = 'OLCI'
+    # SENSOR = 'MERIS'
 
     DEMFactory = jpy.get_type('org.esa.snap.dem.dataio.DEMFactory')
     Resampling = jpy.get_type('org.esa.snap.core.dataop.resamp.Resampling')
     GeoPos = jpy.get_type('org.esa.snap.core.datamodel.GeoPos')
 
-    # SENSOR = 'MERIS'
-    # OUT_FILE = 'C:\\Users\\carsten\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\testdata\\Testprodukt_MER_RR_20050713.dim'
-
-    SENSOR = 'OLCI'
-    IN_FILE = 'C:\\Users\\carsten\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\testdata\\subset_0_of_S3A_OL_1_EFR____20160509T103945_20160509T104245_20160509T124907_0180_004_051_1979_SVL_O_NR_001.dim'
+    if (SENSOR=='MERIS'):
+        IN_FILE = "C:\\Users\\carsten\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\testdata\\subset_1_of_MER_RR__1PTACR20050713_094325_000002592039_00022_17611_0000.dim"
+        OUT_FILE = 'C:\\Users\\carsten\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\testdata\\Testprodukt1_MER_RR_20050713.dim'
+    else:
+        if (SENSOR=='OLCI'):
+            IN_FILE = 'C:\\Users\\carsten\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\testdata\\subset_3_of_S3A_OL_1_EFR____20160509T103945_20160509T104245_20160509T124907_0180_004_051_1979_SVL_O_NR_001.dim'
+            # IN_FILE = 'C:\\Users\\carsten\\Google Drive\\Sentinel3_BRR\\subset_1_of_subset_1_S3A_OL_1_EFR____20160606T071536_20160606T071836_20160607T180921_0179_005_063_3419_LN1_O_NT_001.dim'
+            OUT_FILE = 'C:\\Users\\carsten\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\testdata\\Testproduct3_OL_1_EFR____20160509T103945.dim'
+            # OUT_FILE = 'C:\\Users\\carsten\\Google Drive\\Sentinel3_BRR\\subset_1_of_subset_1_S3A_OL_1_EFR____20160606T071536_20160606T071836_20160607T180921_0179_005_063_3419_LN1_O_NT_001_BRR_v2.dim'
+        else:
+            print("Sensor ",SENSOR," not supported - exit")
+            return
     file = IN_FILE
-    OUT_FILE = 'C:\\Users\\carsten\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\testdata\\Testproduct_S3A_OL_1_EFR____20160509T103945.dim'
 
     AUX_FILE = 'C:\\Users\\carsten\\Dropbox\\Carsten\\Tagesordner\\20160104\\Rayleigh-Correction-Processor\\' \
                'ADF\\MER_ATP_AXVACR20091026_144725_20021224_121445_20200101_000000'
@@ -268,6 +276,11 @@ def main(args=sys.argv[1:]):
         view_zenith = 'view_zenith'
         sun_azimuth = 'sun_azimuth'
         view_azimuth = 'view_azimuth'
+        # water vapour correction:
+        # MERIS band 9 @ 709nm to be corrected; WV absorption 900nm = band 15, WV reference 885nm= band 14
+        b709 = 8  # the band to be corrected
+        bWVRef = 13  # the reference reflectance outside WV absorption band
+        bWV = 14  # the reflectance within the WV absorption band
     if (SENSOR == 'OLCI'):
         dem_alt = 'N/A'
         atm_press = 'sea_level_pressure'
@@ -278,6 +291,11 @@ def main(args=sys.argv[1:]):
         view_zenith = 'OZA'
         sun_azimuth = 'SAA'
         view_azimuth = 'OAA'
+        # water vapour correction:
+        # OLCI band 11 @ 709nm, WV absorption 900nm = band 19, WV reference 885nm = band 18
+        b709 = 11 # the band to be corrected
+        bWVRef=17 # the reference reflectance outside WV absorption band
+        bWV=18 # the reference reflectance outside WV absorption band
 
     if (SENSOR == 'MERIS'): # check if this is required at all!
         tp_alt = product.getTiePointGrid(dem_alt)
@@ -351,8 +369,6 @@ def main(args=sys.argv[1:]):
         sigma[i] = (24 * math.pi ** 3 * (nCO2 ** 2 - 1) ** 2) / (lam2 ** 4 * Ns ** 2 * (nCO2 ** 2 + 2) ** 2) * F_air
 
     for y in range(height):
-    # for y in range(120, 129):
-    # for y in range(10, 30):
         print("processing line ", y, " of ", height)
         # start radiance to reflectance conversion
         theta_s = tp_theta_s.readPixels(0, y, width, 1, theta_s)  # sun zenith angle in degree
@@ -398,9 +414,9 @@ def main(args=sys.argv[1:]):
         rho_ng = reflectance  # to start: gaseous corrected reflectances equals toa reflectances
         # water vapour correction:
         # MERIS band 9 @ 709nm to be corrected; WV absorption 900nm = band 15, WV reference 885nm= band 14
-        b709 = 8  # the band to be corrected
-        bWVRef = 13  # the reference reflectance outside WV absorption band
-        bWV = 14  # the reflectance within the WV absorption band
+        # b709 = 8  # the band to be corrected
+        # bWVRef = 13  # the reference reflectance outside WV absorption band
+        # bWV = 14  # the reflectance within the WV absorption band
         # OLCI band 11 @ 709nm, WV absorption 900nm = band 19, WV reference 885nm = band 18
         # b709 = 11 # the band to be corrected
         # bWVRef=17 # the reference reflectance outside WV absorption band
