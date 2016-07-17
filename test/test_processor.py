@@ -12,6 +12,9 @@ from snappy import ProductIO
 
 class RayCorrTest(TestCase):
     def test_end_to_end(self):
+        # PRODPATH = "C:\\Users\\carsten\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\testdata\\"
+        PRODPATH = "D:\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\testdata\\"
+
         # validate here
         numerr=0
         # read output
@@ -19,12 +22,12 @@ class RayCorrTest(TestCase):
         SENSOR = 'OLCI'
         main([SENSOR])
         if (SENSOR=='MERIS'):
-            REF_FILE =OUT_FILE = 'C:\\Users\\carsten\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\testdata\\Reftestprodukt1_MER_RR_20050713.dim'
-            TEST_FILE=OUT_FILE = 'C:\\Users\\carsten\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\testdata\\Testprodukt1_MER_RR_20050713.dim'
+            REF_FILE =OUT_FILE = PRODPATH+'Reftestprodukt1_MER_RR_20050713.dim'
+            TEST_FILE=OUT_FILE = PRODPATH+'Testprodukt1_MER_RR_20050713.dim'
             NBANDS=15
         if (SENSOR=='OLCI'):
-            REF_FILE = 'C:\\Users\\carsten\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\testdata\\Reftestproduct3_S3A_OL_1_EFR____20160509T103945.dim'
-            TEST_FILE = 'C:\\Users\\carsten\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\testdata\\Testproduct3_OL_1_EFR____20160509T103945.dim'
+            REF_FILE = PRODPATH+'Reftestproduct3_S3A_OL_1_EFR____20160509T103945.dim'
+            TEST_FILE = PRODPATH+'Testproduct3_OL_1_EFR____20160509T103945.dim'
             NBANDS=21
 
         print("Opening reference product ...")

@@ -49,26 +49,30 @@ def main(args=sys.argv[1:]):
     # SENSOR = 'OLCI'
     # SENSOR = 'MERIS'
 
+    # PRODPATH = "C:\\Users\\carsten\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\testdata\\"
+    # AUXPATH = "C:\\Users\\carsten\\Dropbox\\Carsten\\Tagesordner\\20160104\\Rayleigh-Correction-Processor\\"
+    # O3PATH="C:\\Users\\carsten\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\raycorr\\"
+    PRODPATH = "D:\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\testdata\\"
+    AUXPATH = "D:\\Dropbox\\Carsten\\Tagesordner\\20160104\\Rayleigh-Correction-Processor\\"
+    O3PATH="D:\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\raycorr\\"
+
     DEMFactory = jpy.get_type('org.esa.snap.dem.dataio.DEMFactory')
     Resampling = jpy.get_type('org.esa.snap.core.dataop.resamp.Resampling')
     GeoPos = jpy.get_type('org.esa.snap.core.datamodel.GeoPos')
 
     if (SENSOR=='MERIS'):
-        IN_FILE = "C:\\Users\\carsten\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\testdata\\subset_1_of_MER_RR__1PTACR20050713_094325_000002592039_00022_17611_0000.dim"
-        OUT_FILE = 'C:\\Users\\carsten\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\testdata\\Testprodukt1_MER_RR_20050713.dim'
+        IN_FILE = PRODPATH+"subset_1_of_MER_RR__1PTACR20050713_094325_000002592039_00022_17611_0000.dim"
+        OUT_FILE = PRODPATH+'Testprodukt1_MER_RR_20050713.dim'
     else:
         if (SENSOR=='OLCI'):
-            IN_FILE = 'C:\\Users\\carsten\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\testdata\\subset_3_of_S3A_OL_1_EFR____20160509T103945_20160509T104245_20160509T124907_0180_004_051_1979_SVL_O_NR_001.dim'
-            # IN_FILE = 'C:\\Users\\carsten\\Google Drive\\Sentinel3_BRR\\subset_1_of_subset_1_S3A_OL_1_EFR____20160606T071536_20160606T071836_20160607T180921_0179_005_063_3419_LN1_O_NT_001.dim'
-            OUT_FILE = 'C:\\Users\\carsten\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\testdata\\Testproduct3_OL_1_EFR____20160509T103945.dim'
-            # OUT_FILE = 'C:\\Users\\carsten\\Google Drive\\Sentinel3_BRR\\subset_1_of_subset_1_S3A_OL_1_EFR____20160606T071536_20160606T071836_20160607T180921_0179_005_063_3419_LN1_O_NT_001_BRR_v2.dim'
+            IN_FILE = PRODPATH+'subset_3_of_S3A_OL_1_EFR____20160509T103945_20160509T104245_20160509T124907_0180_004_051_1979_SVL_O_NR_001.dim'
+            OUT_FILE = PRODPATH+'Testproduct3_OL_1_EFR____20160509T103945.dim'
         else:
             print("Sensor ",SENSOR," not supported - exit")
             return
     file = IN_FILE
 
-    AUX_FILE = 'C:\\Users\\carsten\\Dropbox\\Carsten\\Tagesordner\\20160104\\Rayleigh-Correction-Processor\\' \
-               'ADF\\MER_ATP_AXVACR20091026_144725_20021224_121445_20200101_000000'
+    AUX_FILE = AUXPATH+'ADF\\MER_ATP_AXVACR20091026_144725_20021224_121445_20200101_000000'
 
     adf = ADF(AUX_FILE)
     ray_coeff_matrix = adf.ray_coeff_matrix
@@ -235,7 +239,7 @@ def main(args=sys.argv[1:]):
     #                         0.0349671, 0.0187495, 0.0086322, 0.0, 0.0, 0.0, 0.0084989, 0.0018944, 0.0012369, 0.0, 0.0, 0.0000488]) # OLCI
     # absorb_ozon = np.array([0.0002174, 0.0034448, 0.0205669, 0.0400134, 0.105446, 0.1081787, 0.0501634,  \
     #                         0.0349671, 0.0187495, 0.0086322, 0.0, 0.0084989, 0.0018944, 0.0012369, 0.0]) # MERIS
-    O3_FILE = 'C:\\Users\\carsten\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\raycorr\\ozone-highres.txt'
+    O3_FILE = O3PATH+'ozone-highres.txt'
     ozoneO = O3(O3_FILE)
     absorb_ozon = ozoneO.convolveInstrument(SENSOR)
 
