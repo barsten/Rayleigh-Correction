@@ -204,8 +204,7 @@ def main(args=sys.argv[1:]):
     raycorFlagsBand.setSampleCoding(raycorFlagCoding)
 
     # add geocoding and create the product on disk (meta data, empty bands)
-    # question to developers: why do I have to do this all at the beginning. I tried putting these two lines to the end of the code and the product was not created correctly
-    # ProductUtils.copyGeoCoding(product, raycorProduct) #geocoding is copied when tie point grids are copied,
+    ProductUtils.copyGeoCoding(product, raycorProduct) #geocoding is copied when tie point grids are copied,
     # i.e. the next copy makes this one redundant (actually it leads to an error beciase lat,lon would be copied twice
     ProductUtils.copyTiePointGrids(product, raycorProduct)
     # raycorProduct.writeHeader('E:\\eodata\\MERIS-Rayleigh\\Antarctica\\subset_0_of_MER_RR__1PRBCM20051201_044737_000003972043_00033_19626_0034_RAYC_1.dim')
