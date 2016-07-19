@@ -205,9 +205,7 @@ def main(args=sys.argv[1:]):
 
     # add geocoding and create the product on disk (meta data, empty bands)
     ProductUtils.copyGeoCoding(product, raycorProduct) #geocoding is copied when tie point grids are copied,
-    # i.e. the next copy makes this one redundant (actually it leads to an error beciase lat,lon would be copied twice
     ProductUtils.copyTiePointGrids(product, raycorProduct)
-    # raycorProduct.writeHeader('E:\\eodata\\MERIS-Rayleigh\\Antarctica\\subset_0_of_MER_RR__1PRBCM20051201_044737_000003972043_00033_19626_0034_RAYC_1.dim')
     raycorProduct.writeHeader(OUT_FILE)
 
     # Calculate and write toa reflectances and Rayleigh optical thickness
