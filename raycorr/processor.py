@@ -49,12 +49,12 @@ def main(args=sys.argv[1:]):
     # SENSOR = 'OLCI'
     # SENSOR = 'MERIS'
 
-    # PRODPATH = "C:\\Users\\carsten\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\testdata\\"
-    # AUXPATH = "C:\\Users\\carsten\\Dropbox\\Carsten\\Tagesordner\\20160104\\Rayleigh-Correction-Processor\\"
-    # O3PATH="C:\\Users\\carsten\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\raycorr\\"
-    PRODPATH = "D:\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\testdata\\"
-    AUXPATH = "D:\\Dropbox\\Carsten\\Tagesordner\\20160104\\Rayleigh-Correction-Processor\\"
-    O3PATH="D:\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\raycorr\\"
+    PRODPATH = "C:\\Users\\carsten\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\testdata\\"
+    AUXPATH = "C:\\Users\\carsten\\Dropbox\\Carsten\\Tagesordner\\20160104\\Rayleigh-Correction-Processor\\"
+    O3PATH="C:\\Users\\carsten\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\raycorr\\"
+    # PRODPATH = "D:\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\testdata\\"
+    # AUXPATH = "D:\\Dropbox\\Carsten\\Tagesordner\\20160104\\Rayleigh-Correction-Processor\\"
+    # O3PATH="D:\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\raycorr\\"
 
     DEMFactory = jpy.get_type('org.esa.snap.dem.dataio.DEMFactory')
     Resampling = jpy.get_type('org.esa.snap.core.dataop.resamp.Resampling')
@@ -72,27 +72,28 @@ def main(args=sys.argv[1:]):
             return
     file = IN_FILE
 
-    AUX_FILE = AUXPATH+'ADF\\MER_ATP_AXVACR20091026_144725_20021224_121445_20200101_000000'
+    # AUX_FILE = AUXPATH+'ADF\\MER_ATP_AXVACR20091026_144725_20021224_121445_20200101_000000'
 
-    adf = ADF(AUX_FILE)
-    ray_coeff_matrix = adf.ray_coeff_matrix
-    rayADF = readRayADF(AUX_FILE)
+    # adf = ADF(AUX_FILE)
+    # ray_coeff_matrix = adf.ray_coeff_matrix
+    # rayADF = readRayADF(AUX_FILE)
 
-    new_aux = OrderedDict()
-    new_aux['tau_ray'] = rayADF['tR']
-    new_aux['theta'] = rayADF['theta']
-    new_aux['ray_albedo_lut'] = rayADF['rayAlbLUT']
-    new_aux['ray_coeff_matrix'] = ray_coeff_matrix
+    # new_aux = OrderedDict()
+    # new_aux['tau_ray'] = rayADF['tR']
+    # new_aux['theta'] = rayADF['theta']
+    # new_aux['ray_albedo_lut'] = rayADF['rayAlbLUT']
+    # new_aux['ray_coeff_matrix'] = ray_coeff_matrix
     # with open('raycorr_auxdata.json', 'w') as fp:
     #         json.dumps(new_aux, fp, cls=JSONNumpyEncoder, indent=2)
     # fp.close()
-    # with open('raycorr_auxdata.json', 'w') as fp:
-    #     obj = json.loads(fp, object_hook=json_as_numpy)
-    json_str = json.dumps(new_aux, cls=JSONNumpyEncoder, indent=2)
-    print(json_str)
-    obj = json.loads(json_str, object_hook=json_as_numpy)
+    with open('../test/raycorr_auxdata.json', 'r') as fp:
+        obj = json.load(fp, object_hook=json_as_numpy)
+    # json_str = json.dumps(new_aux, cls=JSONNumpyEncoder, indent=2)
+    # print(json_str)
+    # obj = json.loads(json_str, object_hook=json_as_numpy)
     # rayADF = new_aux
     rayADF = obj
+    ray_coeff_matrix=rayADF['ray_coeff_matrix']
 
     print("Reading...")
     product = ProductIO.readProduct(file)
