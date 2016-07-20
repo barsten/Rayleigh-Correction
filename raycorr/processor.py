@@ -21,8 +21,8 @@ from snappy import ProductIO
 from snappy import ProductUtils
 from snappy import FlagCoding
 from snappy import jpy
-from raycorr.readfile import readRayADF
-from raycorr.read_RayCoeff import ADF
+# from raycorr.readfile import readRayADF
+# from raycorr.read_RayCoeff import ADF
 from raycorr.o3convolve import O3
 
 import json
@@ -49,12 +49,12 @@ def main(args=sys.argv[1:]):
     # SENSOR = 'OLCI'
     # SENSOR = 'MERIS'
 
-    PRODPATH = "C:\\Users\\carsten\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\testdata\\"
-    AUXPATH = "C:\\Users\\carsten\\Dropbox\\Carsten\\Tagesordner\\20160104\\Rayleigh-Correction-Processor\\"
-    O3PATH="C:\\Users\\carsten\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\raycorr\\"
-    # PRODPATH = "D:\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\testdata\\"
+    # PRODPATH = "C:\\Users\\carsten\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\testdata\\"
+    # AUXPATH = "C:\\Users\\carsten\\Dropbox\\Carsten\\Tagesordner\\20160104\\Rayleigh-Correction-Processor\\"
+    # O3PATH="C:\\Users\\carsten\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\raycorr\\"
+    PRODPATH = "D:\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\testdata\\"
     # AUXPATH = "D:\\Dropbox\\Carsten\\Tagesordner\\20160104\\Rayleigh-Correction-Processor\\"
-    # O3PATH="D:\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\raycorr\\"
+    O3PATH="D:\\Dropbox\\Carsten\\SWProjects\\Rayleigh-Correction\\raycorr\\"
 
     DEMFactory = jpy.get_type('org.esa.snap.dem.dataio.DEMFactory')
     Resampling = jpy.get_type('org.esa.snap.core.dataop.resamp.Resampling')
